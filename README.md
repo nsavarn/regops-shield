@@ -64,3 +64,37 @@ Built as a strategic portfolio + IP asset for 2026 AVP/VP-level positioning.
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE)
+
+
+---
+
+### Core Novelty: 3 Patentable Claims
+
+**Claim 1 — Adaptive Multi-Agent Governance Fabric**: Supervisor Agent dynamically spawns sub-agents (Fraud Investigator, AML Pattern Evolver, RERA/Compliance Auditor, Risk Handoff Validator) with an Explainable Risk Handoff Protocol.
+
+**Claim 2 — Hybrid Memory + Vector Compliance Knowledge Graph**: MongoDB Atlas MCP as unified persistent memory — vector semantic search for regulatory matching, keyword filtering for policy IDs, bidirectional knowledge graph updates without model retraining.
+
+**Claim 3 — Regulated Adaptive Shadow-Run Protocol**: Pre-execution parallel simulation against policy vectors, hash-chained versioned audit packets, full session replay for regulatory examination.
+
+See full analysis: [`PATENTABILITY.md`](PATENTABILITY.md)
+
+### Project Documentation
+
+| Document | Description |
+|---|---|
+| [`PATENTABILITY.md`](PATENTABILITY.md) | Core novelty claims, Section 3(k) strategy, prior art map, filing recommendation |
+| [`STRATEGIC_ALIGNMENT.md`](STRATEGIC_ALIGNMENT.md) | Track recommendation, execution approach, career/IP leverage positioning |
+| [`docs/FORM2_Provisional_Draft.md`](docs/FORM2_Provisional_Draft.md) | Provisional patent specification (Indian IPO — Form 2) |
+| [`docs/ADR.md`](docs/ADR.md) | Architecture Decision Record (TOGAF-aligned) |
+| [`docs/architecture_diagram.md`](docs/architecture_diagram.md) | ASCII flow diagram + ShadowRunSession schema |
+| [`demo/video_script.md`](demo/video_script.md) | Timestamped 3-minute demo recording guide |
+| [`prompts/supervisor_system_prompt.md`](prompts/supervisor_system_prompt.md) | Gemini reasoning system prompt |
+
+### Hackathon Strategy
+
+**Target**: Google Cloud Rapid Agent Hackathon 2026 — **MongoDB Track** ($5,000 first prize)  
+**Deadline**: June 11, 2026 @ 2:00 PM PDT  
+**Submission**: Devpost with hosted URL, public GitHub, and 3-minute demo video  
+**Strategic Goal**: Portfolio asset + provisional patent filing (Indian IPO Form 2) for AVP/VP/Director-level positioning in 2026
+
+See full strategy: [`STRATEGIC_ALIGNMENT.md`](STRATEGIC_ALIGNMENT.md)
