@@ -71,4 +71,87 @@ A system and method for pre-execution shadow simulation of regulated agentic wor
 
 ---
 
+
+*Note: This is a provisional specification.*
+
+---
+
+### Section 3(k) Avoidance Strategy (Indian Patents Act, 1970)
+
+#### Context
+Section 3(k) of the Indian Patents Act, 1970, excludes "a computer programme per se" from patentability. The Guidelines for Computer-Related Inventions (CRIs) issued by the Indian Patent Office (2016, revised 2017) require a "technical effect" or "technical contribution" beyond the mere execution of software to overcome this exclusion.
+
+#### Strategy
+The invention is framed by its specific technical effect within a regulated enterprise workflow, not as a software algorithm in isolation:
+
+1. **Technical Effect in Regulated Enterprise Workflow**
+   - Compliance auditability improvement (quantifiable reduction in audit latency)
+   - Pre-execution risk prevention (reduction in regulatory breach incidents)
+   - Deterministic, replayable decision trails (machine-verifiable traceability)
+   - Closed-loop compliance knowledge graph with bidirectional memory updates
+
+2. **Hardware / Software Integration Claim**
+   - MongoDB Atlas MCP Server (persistent storage layer with hybrid vector + full-text search)
+   - Google Cloud Agent Builder + Gemini (orchestration and reasoning engine)
+   - Real-time API integrations with transaction processors and regulatory data feeds
+   - The combination of these specific components produces a governed agentic orchestration system with measurable compliance outcomes.
+
+3. **Measurable Technical Improvements**
+   - Reduced compliance decisioning latency (shadow-sim before action vs. post-facto detection)
+   - Eliminated post-facto audit reconciliation overhead (immutable, hash-chained versioned documents)
+   - Continuous risk profile updating without full model retraining (bidirectional synthetic outcome feedback)
+   - Deterministic session replay capability for regulatory examination (versioned vector-embedded audit packets)
+
+#### Filing Recommendation
+- **Immediate**: File Provisional Specification (Form 2) online via the Indian Patent Office e-filing portal.
+- **Core Claim Focus**: "Regulated Adaptive Shadow-Run with Explainable Memory Handoff Protocol" as the primary inventive concept.
+- **Within 12 Months**: Convert to Complete Specification following the reduction-to-practice demo video, functional prototype, and audit log evidence bundle.
+- **Evidence Bundle**: GitHub repository (public timestamp), demo video, JSON synthetic datasets, MongoDB audit log outputs, Architecture Decision Record (ADR).
+
+---
+
+### Prior Art Avoidance Map
+
+| Prior Art Type | Gap | RegOps Shield Innovation |
+|---|---|---|
+| Basic fraud detection chatbots | No pre-execution simulation | Shadow-Run Engine validates before action |
+| Siloed compliance tools | No unified memory | MongoDB Atlas MCP as single source of truth |
+| Post-facto audit systems | No immutable trace | Hash-chained versioned documents with replay |
+| Black-box LLM decisions | No human-readable rationale | Explainable Risk Handoff Protocol |
+| Standard RAG systems | No bidirectional learning | Synthetic outcome feedback for continuous improvement |
+
+---
+
+### Patentability Assessment Summary
+
+| Criterion | Assessment |
+|---|---|
+| Novelty | Addresses 2026 agentic AI governance gap — few production examples exist |
+| Inventive Step | Closed-loop orchestration with pre-execution shadow simulation + explainable handoff |
+| Industrial Applicability | Directly deployable in BFSI (banks, insurers, NBFCs, real-estate escrow) |
+| Technical Effect | Pre-execution compliance prevention, immutable audit trails, reduced audit latency |
+| Section 3(k) Risk | Mitigated via enterprise integration framing + hardware/software combination claim |
+| Filing Strength | Strong — combines agentic AI pattern, persistent memory fabric, and regulatory compliance |
+
+---
+
+### Repo Evidence for Reduction to Practice
+
+| Asset | Location in Repo | Purpose |
+|---|---|---|
+| Supervisor Agent | `agents/supervisor.py` | Shadow-run simulation logic |
+| Remediation Agent | `agents/remediation.py` | Risk-to-action mapping and handoff |
+| Audit Generator | `agents/audit.py` | Structured audit packet generation |
+| MongoDB Utils | `memory/mongo_utils.py` | Hybrid vector + text search, hash-chained persistence |
+| Synthetic Claims | `data/claims.json` | Demo scenarios (LOW / MEDIUM / HIGH risk triggers) |
+| Policy Vectors | `data/policies.json` | Compliance rules seeded for vector search |
+| System Prompt | `prompts/supervisor_system_prompt.md` | Gemini reasoning instructions |
+| ADR | `docs/ADR.md` | TOGAF-aligned architecture decisions |
+| Architecture Diagram | `docs/architecture_diagram.md` | Flow diagram + ShadowRunSession schema |
+| Video Script | `demo/video_script.md` | Timestamped 3-minute demo recording guide |
+
+---
+
+*Last updated: May 24, 2026 (Grok Strategic Assessment incorporated)*  
+*Next Step: File Provisional online via IPO e-filing portal; convert to Complete Specification within 12 months*
 *Note: This is a provisional specification. Full specification with drawings, code appendices, and complete claims to be filed within 12 months.*
