@@ -1,0 +1,35 @@
+[
+  {
+    "claim_id": "CLM-2026-001",
+    "claim_amount": 125000,
+    "policy_type": "health",
+    "incident_date": "2026-05-01",
+    "country": "US",
+    "channel": "online",
+    "past_claims_count": 2,
+    "provider_type": "international",
+    "description": "Emergency surgery abroad"
+  },
+  {
+    "claim_id": "CLM-2026-002",
+    "claim_amount": 45000,
+    "policy_type": "health",
+    "incident_date": "2026-05-10",
+    "country": "IN",
+    "channel": "agent",
+    "past_claims_count": 0,
+    "provider_type": "domestic",
+    "description": "Planned knee replacement surgery"
+  },
+  {
+    "claim_id": "CLM-2026-003",
+    "claim_amount": 200000,
+    "policy_type": "health",
+    "incident_date": "2026-04-28",
+    "country": "SG",
+    "channel": "online",
+    "past_claims_count": 5,
+    "provider_type": "international",
+    "description": "Multiple procedures — cardiac event"
+  }
+]

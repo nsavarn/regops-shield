@@ -1,0 +1,30 @@
+[
+  {
+    "policy_id": "POL-001",
+    "text": "High amount international provider manual review",
+    "rule": "If claim_amount > 100000 AND provider_type is international, trigger manual review",
+    "action": "MANUAL_REVIEW",
+    "severity": "HIGH"
+  },
+  {
+    "policy_id": "POL-002",
+    "text": "Past claims frequency additional documentation",
+    "rule": "If past_claims_count > 1 within 90 days, require additional documentation",
+    "action": "REQUEST_DOCS",
+    "severity": "MEDIUM"
+  },
+  {
+    "policy_id": "POL-003",
+    "text": "Claim amount senior approval threshold",
+    "rule": "If claim_amount > 100000, escalate to senior approval",
+    "action": "SENIOR_APPROVAL",
+    "severity": "HIGH"
+  },
+  {
+    "policy_id": "POL-004",
+    "text": "Fraud indicators investigation flag",
+    "rule": "If description contains fraud indicators (multiple procedures, unusual patterns), flag for investigation",
+    "action": "FLAG_INVESTIGATION",
+    "severity": "HIGH"
+  }
+]
