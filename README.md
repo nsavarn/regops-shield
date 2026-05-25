@@ -2,99 +2,123 @@
 
 **Google Cloud Rapid Agent Hackathon 2026 — MongoDB Track**
 
-A functional multi-agent system that performs **pre-execution shadow simulation** on regulated workflows (insurance claim triage), applies adaptive remediation, and persists replayable audit memory using **MongoDB Atlas MCP**.
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)](https://fastapi.tiangolo.com)
+
+A multi-agent system that performs **pre-execution shadow simulation** on regulated workflows (insurance claim triage), applies adaptive remediation, and persists replayable audit memory using **MongoDB Atlas MCP**. Now deployed as a production-grade FastAPI microservice on **Google Cloud Run**.
 
 ## Patent-Pending Core Innovation
-
 > **Regulated Adaptive Shadow-Run with Explainable Memory Handoff Protocol** — enabling governed, closed-loop agentic execution with transparent decision traces.
 
 ## Demo Flow
-
-1. Claim ingestion (synthetic JSON)
-2. Policy retrieval via MongoDB (text search, vector-ready)
-3. Shadow-run risk assessment with built-in guardrails
+1. Claim ingestion (synthetic JSON or REST API)
+2. Policy retrieval via MongoDB Atlas (vector search with `text-embedding-004`)
+3. Shadow-run risk assessment via **Gemini 2.0 Flash** with native structured outputs
 4. Adaptive remediation recommendation
-5. Persist session + replay from audit memory
+5. Audit packet persistence + replay from MongoDB
 
 ## Architecture
-
 ```
-Client Request
-    └─▶ Supervisor Agent (Gemini 1.5 Pro)
-            └─▶ search_policies tool
-                    └─▶ MongoDB Atlas MCP
-                            ├── policies  (text index → vector-ready)
-                            └── shadow_sessions (audit memory)
-            └─▶ Remediation Helper
-                    └─▶ Audit Packet + Replay
+Client (REST API / CLI)
+ └─▶ FastAPI Microservice (app.py) — Google Cloud Run
+     └─▶ Supervisor Agent (Gemini 2.0 Flash + Structured Outputs)
+         └─▶ search_policies tool (Vector Search)
+         └─▶ MongoDB Atlas MCP
+             ├── policies (vector index + hybrid search)
+             └── shadow_sessions (audit memory)
+         └─▶ Remediation Helper
+         └─▶ AuditPacketGenerator
+         └─▶ SessionResponse (Pydantic)
 ```
-
-**Core IP Artifact**: `ShadowRunSession` — versioned, structured record enabling hybrid search and full workflow replay.
+**Core IP Artifact**: `ShadowRunSession` — versioned, structured record enabling hybrid vector search and full workflow replay.
 
 ## Tech Stack
-
 | Layer | Technology |
 |---|---|
-| Reasoning & Orchestration | Gemini 1.5 Pro + structured JSON output + tool calling |
-| Memory & Tools | MongoDB Atlas MCP (document store + text index, vector-ready) |
+| Reasoning & Orchestration | **Gemini 2.0 Flash** + native Pydantic structured outputs + tool calling |
+| Memory & Tools | MongoDB Atlas MCP (document store + Vector Search with `text-embedding-004`) |
 | Guardrails | Explicit policy rules + Pydantic validation |
-| Orchestration Pattern | Thin supervisor with ShadowRunSession + replay capability |
+| API & Deployment | **FastAPI** + Uvicorn + Docker + **Google Cloud Run** |
+| Orchestration Pattern | Thin supervisor with ShadowRunSession + replay + vector memory |
 
 ## Quick Start
 
+### Local Development
 ```bash
-cp .env.example .env        # Add GEMINI_API_KEY + MONGODB_URI
+cp .env.example .env
+# Edit .env — set GEMINI_API_KEY, MONGODB_URI, GOOGLE_CLOUD_PROJECT_ID
 pip install -r requirements.txt
-python main.py              # Run shadow simulation
-python main.py --replay     # Replay last session from MongoDB
+python main.py          # Run shadow simulation
+python main.py --replay # Replay last session from MongoDB
 ```
 
-## Submission Assets
+### API Server (Local)
+```bash
+python app.py
+# Server runs at http://localhost:8080
+# Visit http://localhost:8080/docs for OpenAPI/Swagger UI
+```
 
-- 3-minute demo video (link to be added)
-- Public GitHub: https://github.com/nsavarn/regops-shield
-- Provisional Patent (India IPO) — reduction to practice achieved
+### Docker / Cloud Run
+```bash
+docker build -t regops-shield .
+docker run -p 8080:8080 --env-file .env regops-shield
 
-## Business Value
+# Deploy to Google Cloud Run
+gcloud run deploy regops-shield --source . --region us-central1 --allow-unauthenticated
+```
 
-Delivers enterprise-grade pre-execution governance for agentic AI in Financial Services & Insurance — reducing compliance friction while providing full auditability.
+## API Endpoints
 
-Built as a strategic portfolio + IP asset for 2026 AVP/VP-level positioning.
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/` | Service info |
+| GET | `/health` | Health check with MongoDB status |
+| POST | `/api/v1/shadow-run` | Run shadow simulation on a claim |
+| GET | `/api/v1/sessions/{id}` | Retrieve audit session by ID |
+| GET | `/api/v1/audit/{id}` | Generate full audit packet |
+| POST | `/api/v1/vector-search` | Vector search policies |
+| GET | `/api/v1/sessions` | List recent sessions |
+
+### Example Request
+```bash
+curl -X POST http://localhost:8080/api/v1/shadow-run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "claim_id": "CLM-001",
+    "claimant_id": "USR-12345",
+    "claim_type": "auto",
+    "claim_amount": 15000.00,
+    "incident_date": "2025-12-15",
+    "policy_number": "POL-XYZ789",
+    "description": "Vehicle collision at intersection"
+  }'
+```
+
+## Project Documentation
+- **`PATENTABILITY.md`**: Core novelty claims, Section 3(k) strategy, prior art analysis
+- **`STRATEGIC_ALIGNMENT.md`**: Hackathon track recommendation and execution plan
+- **`docs/FORM2_Provisional_Draft.md`**: Indian IPO provisional patent specification (Form 2)
+- **`docs/ADR.md`**: Architecture Decision Record (TOGAF-aligned)
+- **`demo/video_script.md`**: 3-minute demo recording guide
+
+## Environment Variables
+| Variable | Description | Required |
+|---|---|---|
+| `GEMINI_API_KEY` | Google AI Studio API key | Yes |
+| `GOOGLE_CLOUD_PROJECT_ID` | GCP project ID | Yes |
+| `MONGODB_URI` | MongoDB Atlas connection string | Yes |
+| `PORT` | Server port (default: 8080 for Cloud Run) | No |
+| `LOG_LEVEL` | Python logging level (default: INFO) | No |
+
+See `.env.example` for full list.
 
 ## License
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
-Apache 2.0 — see [LICENSE](LICENSE)
-
+## Team
+- **nsavarn** — Principal Engineer & Patent Architect
 
 ---
-
-### Core Novelty: 3 Patentable Claims
-
-**Claim 1 — Adaptive Multi-Agent Governance Fabric**: Supervisor Agent dynamically spawns sub-agents (Fraud Investigator, AML Pattern Evolver, RERA/Compliance Auditor, Risk Handoff Validator) with an Explainable Risk Handoff Protocol.
-
-**Claim 2 — Hybrid Memory + Vector Compliance Knowledge Graph**: MongoDB Atlas MCP as unified persistent memory — vector semantic search for regulatory matching, keyword filtering for policy IDs, bidirectional knowledge graph updates without model retraining.
-
-**Claim 3 — Regulated Adaptive Shadow-Run Protocol**: Pre-execution parallel simulation against policy vectors, hash-chained versioned audit packets, full session replay for regulatory examination.
-
-See full analysis: [`PATENTABILITY.md`](PATENTABILITY.md)
-
-### Project Documentation
-
-| Document | Description |
-|---|---|
-| [`PATENTABILITY.md`](PATENTABILITY.md) | Core novelty claims, Section 3(k) strategy, prior art map, filing recommendation |
-| [`STRATEGIC_ALIGNMENT.md`](STRATEGIC_ALIGNMENT.md) | Track recommendation, execution approach, career/IP leverage positioning |
-| [`docs/FORM2_Provisional_Draft.md`](docs/FORM2_Provisional_Draft.md) | Provisional patent specification (Indian IPO — Form 2) |
-| [`docs/ADR.md`](docs/ADR.md) | Architecture Decision Record (TOGAF-aligned) |
-| [`docs/architecture_diagram.md`](docs/architecture_diagram.md) | ASCII flow diagram + ShadowRunSession schema |
-| [`demo/video_script.md`](demo/video_script.md) | Timestamped 3-minute demo recording guide |
-| [`prompts/supervisor_system_prompt.md`](prompts/supervisor_system_prompt.md) | Gemini reasoning system prompt |
-
-### Hackathon Strategy
-
-**Target**: Google Cloud Rapid Agent Hackathon 2026 — **MongoDB Track** ($5,000 first prize)  
-**Deadline**: June 11, 2026 @ 2:00 PM PDT  
-**Submission**: Devpost with hosted URL, public GitHub, and 3-minute demo video  
-**Strategic Goal**: Portfolio asset + provisional patent filing (Indian IPO Form 2) for AVP/VP/Director-level positioning in 2026
-
-See full strategy: [`STRATEGIC_ALIGNMENT.md`](STRATEGIC_ALIGNMENT.md)
+*Built for Google Cloud Rapid Agent Hackathon 2026 (MongoDB Track)*
