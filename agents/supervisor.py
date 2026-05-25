@@ -1,14 +1,14 @@
+# supervisors.py
+# RegOps Shield — Supervisor Agent (Gemini 2.0 + Native Structured Outputs)
+
 from pydantic import BaseModel, Field
 from typing import Literal, List, Optional
-import google.generativeai as genai
 import os
 from dotenv import load_dotenv
-import json
-from memory.mongo_utils import MongoUtils
+from google.genai import Client
+from google.genai.types import Tool, FunctionDeclaration
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
 
 class ShadowRunSession(BaseModel):
     """Core IP artifact: versioned, structured compliance session record."""
@@ -21,64 +21,53 @@ class ShadowRunSession(BaseModel):
     recommendation: Literal["APPROVE", "REJECT", "REMEDIATE"]
     rationale: str
     remediation_suggestion: Optional[str] = None
-    # Extended fields for patent & replayability
     session_id: Optional[str] = None
     policy_version: Optional[str] = "v1.0"
     risk_factors: Optional[List[str]] = None
-
+    evidence_summary: Optional[str] = None
 
 class SupervisorAgent:
     def __init__(self):
-        self.model = genai.GenerativeModel("gemini-1.5-pro")
-        self.mongo = MongoUtils()
+        self.client = Client(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model_id = "gemini-2.0-flash"
+        # System instruction: moved out of prompt for cleaner API usage
+        self.system_instruction = """You are a compliance supervisor agent for RegOps Shield, an enterprise RegTech system.
+Your role is to perform pre-execution shadow-run simulations on insurance claims.
+Analyze claims against retrieved regulatory policies and produce structured risk assessments.
+Respond ONLY with valid JSON matching the requested schema. No markdown, no explanations outside the JSON."""
 
-    def search_policies(self, query: str) -> List[dict]:
+    def search_policies(self, query: str, limit: int = 5) -> List[dict]:
         """Tool: retrieve relevant policies from MongoDB by keyword."""
-        return self.mongo.search_policies(query)
-
-    def _parse_json(self, text: str) -> dict:
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError as e:
-            print(f"JSON Parse Error: {e}. Raw output (first 500 chars): {text[:500]}...")
-            raise ValueError("Gemini did not return valid JSON. Check prompt or model output.")
+        from memory.mongo_utils import MongoUtils
+        mongo = MongoUtils()
+        return mongo.search_policies(query, limit=limit)
 
     def run_shadow_simulation(self, claim: dict, policies: List[dict]) -> ShadowRunSession:
-        prompt = f"""
-You are a compliance supervisor agent for RegOps Shield.
-Perform a pre-execution shadow-run simulation for this insurance claim.
+        """Run a shadow-run simulation with native structured output support."""
+        claim_json = __import__("json").dumps(claim, indent=2)
+        policies_json = __import__("json").dumps(policies, indent=2)
+
+        prompt = f"""Analyze this insurance claim against the retrieved policies.
 
 Claim:
-{json.dumps(claim, indent=2)}
+{claim_json}
 
 Retrieved Policies:
-{json.dumps(policies, indent=2)}
+{policies_json}
 
-Strict Guardrails:
-- If any required claim field is missing or unclear → risk_level="HIGH", recommendation="REMEDIATE"
-- If claim_amount > 100000 AND any policy is triggered → do NOT return "APPROVE"
-- Always return valid JSON only. No extra text, no markdown fences.
+Apply these guardrails:
+- If any required claim field is missing or unclear, set risk_level="HIGH", recommendation="REMEDIATE"
+- If claim_amount > 100000 AND any policy is triggered, do NOT return "APPROVE"
+- Always return valid JSON."""
 
-Respond with exact JSON matching this schema:
-{{
-  "claim_id": string,
-  "input_claim": object,
-  "retrieved_policies": array,
-  "risk_level": "LOW"|"MEDIUM"|"HIGH",
-  "risk_score": number (0-100),
-  "triggered_policies": array of strings,
-  "recommendation": "APPROVE"|"REJECT"|"REMEDIATE",
-  "rationale": string,
-  "remediation_suggestion": string or null,
-  "risk_factors": array of strings
-}}
-"""
-        response = self.model.generate_content(
-            prompt,
-            generation_config={
+        response = self.client.models.generate_content(
+            model=self.model_id,
+            contents=prompt,
+            system_instruction=self.system_instruction,
+            config={
                 "response_mime_type": "application/json",
-                "temperature": 0.1
-            }
+                "response_schema": ShadowRunSession,
+                "temperature": 0.1,
+            },
         )
-        data = self._parse_json(response.text)
-        return ShadowRunSession(**data)
+        return ShadowRunSession.model_validate_json(response.text)
