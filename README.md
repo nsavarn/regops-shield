@@ -90,6 +90,81 @@ curl -X POST http://localhost:8080/api/v1/shadow-run \
     "claimant_id": "USR-12345",
     "claim_type": "auto",
     "claim_amount": 15000.00,
+
+
+## MCP Server (Model Context Protocol)
+
+RegOps Shield implements a lightweight MCP server (`agents/mcp_server.py`) that exposes MongoDB Atlas as a tool provider. This enables Gemini 2.0 Flash to autonomously call `search_policies` and `vector_search_policies` through the Model Context Protocol.
+
+**Available MCP Tools:**
+- `search_policies` — Keyword search against MongoDB Atlas policy collection
+- `vector_search_policies` — Semantic search using Google text-embedding-004 (768 dims)
+- `health_check` — MongoDB connection health probe
+
+```bash
+# Test MCP server standalone
+python agents/mcp_server.py
+```
+
+## Architecture (Phase 4)
+
+```
+┌─────────────────┐
+│    Client       │
+│  (REST / CLI)   │
+└───────┬─────────┘
+        │ HTTP POST /api/v1/shadow-run
+        v
+┌─────────────────────────────────────────────────┐
+│         FastAPI Microservice (app.py)           │
+│  Google Cloud Run — Containerized               │
+└──┬──────────┬────────────────┬──────────────────┘
+   │          │                │
+   v          v                v
+┌──────────┐ ┌──────────────┐ ┌──────────────────┐
+│Supervisor│ │  MCPServer   │ │  Audit/Audit     │
+│  Agent   │ │  (tool wrap) │ │  Remediation     │
+│Gemini 2.0│ │  search_     │ │  Helper          │
+│ Flash    │ │  policies    │ │                  │
+└───┬──────┘ └─────┬────────┘ └──────────────────┘
+    │               │
+    │  native tool  │
+    │  call         │
+    v               v
+┌─────────────────────────────────────────────────┐
+│          MongoDB Atlas MCP                      │
+│ ┌──────────────┐  ┌────────────────────────────┐ │
+│ │   policies   │  │    shadow_sessions         │ │
+│ │ vector_index │──│    (audit trail replay)    │ │
+│ └──────────────┘  └────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+```
+
+## OpenAPI Documentation
+
+The API is documented via OpenAPI 3.0. When running locally:
+
+```bash
+# Swagger UI
+http://localhost:8080/docs
+
+# ReDoc
+http://localhost:8080/redoc
+```
+
+See `API_ENDPOINTS.md` for the complete endpoint specification with request/response schemas.
+
+## Key Technical Decisions
+
+| Decision | Rationale |
+|---|---|
+| **Native Tool Calling** | Gemini 2.0 Flash autonomously decides when to query MongoDB — no hardcoded prompt flows |
+| **Pydantic Structured Outputs** | `response_schema=ShadowRunSession` guarantees valid JSON — no prompt-hacking |
+| **Atlas Vector Search** | Semantic policy retrieval with Google text-embedding-004 — 768 dimensions |
+| **MCP Wrapper (Option B)** | Lightweight `MCPServer` class exposing tools via standard MCP protocol |
+| **System Instruction Separation** | Role defined in `system_instruction` parameter + `prompts/supervisor_system.yaml` |
+| **Two-Phase Analysis** | Phase 1: tool retrieval, Phase 2: structured evaluation with guardrails |
+| **Audit Trail** | `tool_calls_made` field records every tool call for compliance replay |
     "incident_date": "2025-12-15",
     "policy_number": "POL-XYZ789",
     "description": "Vehicle collision at intersection"
