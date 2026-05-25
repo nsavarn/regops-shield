@@ -120,5 +120,70 @@ Apache License 2.0 — see [LICENSE](LICENSE) for details.
 ## Team
 - **nsavarn** — Principal Engineer & Patent Architect
 
+- ### Seed Sample Data
+Sample data for testing is provided in the `data/` directory:
+- `data/claims.json` — 3 synthetic insurance claims (CLM-2026-001 to CLM-2026-003)
+- `data/policies.json` — 4 compliance policy rules with severity levels (HIGH/MEDIUM)
+
+To seed data into MongoDB Atlas:
+```bash
+# Using Python
+python -c "import json; from pymongo import MongoClient; \
+  client = MongoClient('$MONGODB_URI'); \
+  db = client['regops_shield']; \
+  db.policies.insert_many(json.load(open('data/policies.json')))"
+```
+
+### Phase 4 Architecture (Native Tools + Vector Search)
+The current release (v1.0) implements full Phase 4 capabilities:
+* **Gemini 2.0 Flash** with native tool calling (no prompt-hacked JSON)
+* **Pydantic** structured outputs for deterministic responses
+* **MongoDB Atlas Vector Search** using `text-embedding-004` for policy retrieval
+* **Shadow-run sessions** persisted in MongoDB with replayable audit memory
+* **FastAPI** microservice deployed on Google Cloud Run
+
+#### End-to-End Flow
+```text
+[Claim Input] → [POST /api/v1/shadow-run]
+              → [Supervisor Agent (Gemini 2.0 Flash)]
+              → [search_policies tool → Atlas Vector Search]
+              → [Risk Assessment + Remediation]
+              → [AuditPacketGenerator → MongoDB]
+              → [SessionResponse (Pydantic) → HTTP 200]
+```
+
+### Deploy to Google Cloud Run
+```bash
+# 1. Enable required APIs
+gcloud services enable cloudbuild.googleapis.com run.googleapis.com
+
+# 2. Authenticate
+gcloud auth login
+gcloud config set project $GOOGLE_CLOUD_PROJECT_ID
+
+# 3. Deploy directly from source (Cloud Build handles Dockerfile)
+gcloud run deploy regops-shield \\
+  --source . \\
+  --region us-central1 \\
+  --allow-unauthenticated \\
+  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY,\\
+     GOOGLE_CLOUD_PROJECT_ID=$GOOGLE_CLOUD_PROJECT_ID,\\
+     MONGODB_URI=$MONGODB_URI,\\
+     ATLAS_CLUSTER_NAME=$ATLAS_CLUSTER_NAME,\\
+     ATLAS_DATABASE=$ATLAS_DATABASE
+
+# 4. Get your live URL
+gcloud run services describe regops-shield --region us-central1
+```
+
+### Hackathon Submission
+* **Devpost**: [link to Devpost submission]
+* **Live Demo**: `https://regops-shield-<hash>-uc.a.run.app`
+* **GitHub**: https://github.com/nsavarn/regops-shield
+* **Demo Video**: `docs/demo/video_script.md` (3-minute walkthrough)
+* **Patent Docs**: `docs/FORM2_Provisional_Draft.md`
+
+---
+
 ---
 *Built for Google Cloud Rapid Agent Hackathon 2026 (MongoDB Track)*
