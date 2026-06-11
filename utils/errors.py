@@ -5,144 +5,155 @@ JSON structure that clients and monitoring systems can rely on.
 """
 from __future__ import annotations
 
+import logging
+from http import HTTPStatus
 from typing import Any, Optional
 
-from fastapi import FastAPI, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Exception Hierarchy
+# Exception hierarchy
 # ---------------------------------------------------------------------------
+
 
 class RegOpsError(Exception):
     """Base exception for all RegOps Shield errors."""
 
+    http_status: int = status.HTTP_500_INTERNAL_SERVER_ERROR
+    error_code: str = "REGOPS_ERROR"
+
     def __init__(
         self,
-        message: str,
-        code: str = "REGOPS_ERROR",
-        status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
+        message: str = "An unexpected error occurred.",
         details: Optional[Any] = None,
+        http_status: Optional[int] = None,
+        error_code: Optional[str] = None,
     ) -> None:
         super().__init__(message)
         self.message = message
-        self.code = code
-        self.status_code = status_code
         self.details = details
+        if http_status is not None:
+            self.http_status = http_status
+        if error_code is not None:
+            self.error_code = error_code
+
+
+class NotFoundError(RegOpsError):
+    """Raised when a requested resource does not exist."""
+
+    http_status = status.HTTP_404_NOT_FOUND
+    error_code = "NOT_FOUND"
+
+    def __init__(self, resource: str = "Resource") -> None:
+        super().__init__(message=f"{resource} not found.")
 
 
 class ValidationFailed(RegOpsError):
-    """Raised when request or policy validation fails."""
+    """Raised when input validation fails."""
 
-    def __init__(self, message: str, details: Optional[Any] = None) -> None:
-        super().__init__(
-            message=message,
-            code="VALIDATION_FAILED",
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            details=details,
-        )
+    http_status = status.HTTP_422_UNPROCESSABLE_ENTITY
+    error_code = "VALIDATION_FAILED"
 
 
-class PolicyNotFound(RegOpsError):
-    """Raised when the requested policy document does not exist."""
+class ServiceUnavailableError(RegOpsError):
+    """Raised when a downstream service is unreachable."""
 
-    def __init__(self, policy_id: str) -> None:
-        super().__init__(
-            message=f"Policy '{policy_id}' not found.",
-            code="POLICY_NOT_FOUND",
-            status_code=status.HTTP_404_NOT_FOUND,
-        )
+    http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+    error_code = "SERVICE_UNAVAILABLE"
 
 
-class AgentExecutionError(RegOpsError):
-    """Raised when an agent fails during execution."""
+class UnauthorizedError(RegOpsError):
+    """Raised when the caller lacks valid credentials."""
 
-    def __init__(self, agent_name: str, reason: str) -> None:
-        super().__init__(
-            message=f"Agent '{agent_name}' failed: {reason}",
-            code="AGENT_EXECUTION_ERROR",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    http_status = status.HTTP_401_UNAUTHORIZED
+    error_code = "UNAUTHORIZED"
 
 
-class IntegrityCheckFailed(RegOpsError):
-    """Raised when SHA-256 integrity verification fails."""
+class ForbiddenError(RegOpsError):
+    """Raised when the caller lacks permission for the operation."""
 
-    def __init__(self, expected: str, actual: str) -> None:
-        super().__init__(
-            message="SHA-256 integrity check failed.",
-            code="INTEGRITY_CHECK_FAILED",
-            status_code=status.HTTP_409_CONFLICT,
-            details={"expected": expected, "actual": actual},
-        )
-
-
-class RateLimitExceeded(RegOpsError):
-    """Raised when a client exceeds the API rate limit."""
-
-    def __init__(self) -> None:
-        super().__init__(
-            message="Rate limit exceeded. Please retry after a short delay.",
-            code="RATE_LIMIT_EXCEEDED",
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
+    http_status = status.HTTP_403_FORBIDDEN
+    error_code = "FORBIDDEN"
 
 
 # ---------------------------------------------------------------------------
-# Error Response Helper
+# Internal helper
 # ---------------------------------------------------------------------------
 
-def _error_response(error: RegOpsError) -> JSONResponse:
-    """Convert a RegOpsError to a standardised JSONResponse."""
+
+def _error_response(exc: RegOpsError) -> JSONResponse:
+    """Serialize a RegOpsError into a standard JSONResponse."""
     body: dict[str, Any] = {
         "error": {
-            "code": error.code,
-            "message": error.message,
+            "code": exc.error_code,
+            "message": exc.message,
         }
     }
-    if error.details is not None:
-        body["error"]["details"] = error.details
-    return JSONResponse(status_code=error.status_code, content=body)
+    if exc.details is not None:
+        body["error"]["details"] = exc.details
+    return JSONResponse(status_code=exc.http_status, content=body)
 
 
 # ---------------------------------------------------------------------------
-# FastAPI Exception Handlers
+# Standalone handler functions (imported by main.py)
 # ---------------------------------------------------------------------------
 
-def register_error_handlers(app: FastAPI) -> None:
-    """Register all custom exception handlers on the FastAPI app.
 
-    Call this once during application startup::
+async def handler_regops_error(request: Request, exc: Exception) -> JSONResponse:  # noqa: ARG001
+    """Handle RegOpsError and its subclasses."""
+    assert isinstance(exc, RegOpsError)
+    logger.warning(
+        "RegOpsError [%s]: %s",
+        exc.error_code,
+        exc.message,
+        extra={"path": request.url.path},
+    )
+    return _error_response(exc)
 
-        from utils.errors import register_error_handlers
-        register_error_handlers(app)
-    """
 
-    @app.exception_handler(RegOpsError)
-    async def regops_error_handler(
-        request: Request, exc: RegOpsError
-    ) -> JSONResponse:
-        return _error_response(exc)
+async def handler_validation_error(request: Request, exc: Exception) -> JSONResponse:  # noqa: ARG001
+    """Handle Pydantic ValidationError."""
+    assert isinstance(exc, ValidationError)
+    logger.warning(
+        "ValidationError on %s: %s",
+        request.url.path,
+        exc.error_count(),
+    )
+    error = ValidationFailed(
+        message="Request validation failed.",
+        details=exc.errors(include_url=False),
+    )
+    return _error_response(error)
 
-    @app.exception_handler(ValidationError)
-    async def pydantic_validation_handler(
-        request: Request, exc: ValidationError
-    ) -> JSONResponse:
-        error = ValidationFailed(
-            message="Request validation failed.",
-            details=exc.errors(),
-        )
-        return _error_response(error)
 
-    @app.exception_handler(Exception)
-    async def unhandled_exception_handler(
-        request: Request, exc: Exception
-    ) -> JSONResponse:
-        error = RegOpsError(
-            message="An unexpected error occurred.",
-            code="INTERNAL_SERVER_ERROR",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-        return _error_response(error)
+async def handler_unhandled(request: Request, exc: Exception) -> JSONResponse:  # noqa: ARG001
+    """Catch-all handler for unhandled exceptions."""
+    logger.exception(
+        "Unhandled exception on %s",
+        request.url.path,
+        exc_info=exc,
+    )
+    error = RegOpsError(
+        message="An unexpected internal error occurred.",
+        http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        error_code="INTERNAL_SERVER_ERROR",
+    )
+    return _error_response(error)
+
+
+# ---------------------------------------------------------------------------
+# Helper to register all handlers on an existing app (optional pattern)
+# ---------------------------------------------------------------------------
+
+
+def register_error_handlers(app: Any) -> None:  # type: ignore[misc]
+    """Register all error handlers on a FastAPI app instance."""
+    from pydantic import ValidationError as PydanticValidationError  # local import
+
+    app.add_exception_handler(RegOpsError, handler_regops_error)
+    app.add_exception_handler(PydanticValidationError, handler_validation_error)
+    app.add_exception_handler(Exception, handler_unhandled)
