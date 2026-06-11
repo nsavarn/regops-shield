@@ -6,259 +6,176 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)](https://fastapi.tiangolo.com)
 
-A multi-agent system that performs **pre-execution shadow simulation** on regulated workflows (insurance claim triage), applies adaptive remediation, and persists replayable audit memory using **MongoDB Atlas MCP**. Now deployed as a production-grade FastAPI microservice on **Google Cloud Run**.
+## Overview
 
-## Patent-Pending Core Innovation
-> **Regulated Adaptive Shadow-Run with Explainable Memory Handoff Protocol** — enabling governed, closed-loop agentic execution with transparent decision traces.
+**RegOps Shield** is a multi-agent system designed for **pre-execution shadow simulation** on regulated workflows — such as insurance claim triage — with adaptive remediation and replayable audit memory. Built on **Gemini 2.0 Flash** with native tool calling, **MongoDB Atlas MCP** for persistent memory and vector search, and deployed as a production-grade FastAPI microservice on **Google Cloud Run**.
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Shadow-Run Simulation** | Pre-execution risk assessment against policy vectors before any compliance action |
+| **Multi-Agent Orchestration** | Supervisor + Remediation + Audit agents working in concert |
+| **MongoDB Atlas MCP** | Document store + Vector Search (768-dim, text-embedding-004) + Hybrid Search |
+| **Structured Outputs** | Pydantic-validated `ShadowRunSession` schema for deterministic JSON |
+| **Audit Trail** | Full session replayability from MongoDB with SHA-256 integrity |
+| **HITL Governance** | Human-in-the-loop escalation for high-risk decisions |
 
 ## Demo Flow
-1. Claim ingestion (synthetic JSON or REST API)
-2. Policy retrieval via MongoDB Atlas (vector search with `text-embedding-004`)
-3. Shadow-run risk assessment via **Gemini 2.0 Flash** with native structured outputs
-4. Adaptive remediation recommendation
-5. Audit packet persistence + replay from MongoDB
 
-## Architecture
-```
-Client (REST API / CLI)
- └─▶ FastAPI Microservice (app.py) — Google Cloud Run
-     └─▶ Supervisor Agent (Gemini 2.0 Flash + Structured Outputs)
-         └─▶ search_policies tool (Vector Search)
-         └─▶ MongoDB Atlas MCP
-             ├── policies (vector index + hybrid search)
-             └── shadow_sessions (audit memory)
-         └─▶ Remediation Helper
-         └─▶ AuditPacketGenerator
-         └─▶ SessionResponse (Pydantic)
-```
-**Core IP Artifact**: `ShadowRunSession` — versioned, structured record enabling hybrid vector search and full workflow replay.
+1. **Claim Ingestion** — Synthetic JSON or REST API (`POST /api/v1/shadow-run`)
+2. **Policy Retrieval** — MongoDB Atlas Vector Search with Gemini `text-embedding-004`
+3. **Shadow-Run Assessment** — Gemini 2.0 Flash with native structured outputs
+4. **Remediation** — Adaptive recommendation based on triggered policies
+5. **Persistence** — Audit packet stored in MongoDB for full replay
+6. **Replay** — `python main.py --replay` reconstructs the entire session
 
 ## Tech Stack
+
 | Layer | Technology |
-|---|---|
-| Reasoning & Orchestration | **Gemini 2.0 Flash** + native Pydantic structured outputs + tool calling |
-| Memory & Tools | MongoDB Atlas MCP (document store + Vector Search with `text-embedding-004`) |
-| Guardrails | Explicit policy rules + Pydantic validation |
-| API & Deployment | **FastAPI** + Uvicorn + Docker + **Google Cloud Run** |
-| Orchestration Pattern | Thin supervisor with ShadowRunSession + replay + vector memory |
+|-------|------------|
+| **Reasoning & Orchestration** | Gemini 2.0 Flash + Native Tool Calling + Pydantic Structured Outputs |
+| **Memory & Tools** | MongoDB Atlas MCP (Document Store + Atlas Vector Search) |
+| **Guardrails** | Explicit policy rules + Pydantic validation |
+| **API & Deployment** | FastAPI + Uvicorn + Docker + Google Cloud Run |
+| **Embeddings** | Google `text-embedding-004` (768-dim) |
 
 ## Quick Start
 
 ### Local Development
+
 ```bash
+# 1. Configure environment
 cp .env.example .env
-# Edit .env — set GEMINI_API_KEY, MONGODB_URI, GOOGLE_CLOUD_PROJECT_ID
+# Edit .env: set GEMINI_API_KEY, MONGODB_URI, GOOGLE_CLOUD_PROJECT_ID
+
+# 2. Install dependencies
 pip install -r requirements.txt
-python main.py          # Run shadow simulation
-python main.py --replay # Replay last session from MongoDB
+
+# 3. Run shadow simulation CLI
+python main.py
+
+# 4. Replay last session
+python main.py --replay
 ```
 
-### API Server (Local)
+### API Server
+
 ```bash
+# Start server (default: http://localhost:8080)
 python app.py
-# Server runs at http://localhost:8080
-# Visit http://localhost:8080/docs for OpenAPI/Swagger UI
+
+# View Swagger UI
+open http://localhost:8080/docs
 ```
 
-### Docker / Cloud Run
-```bash
-docker build -t regops-shield .
-docker run -p 8080:8080 --env-file .env regops-shield
+### Cloud Run Deployment
 
-# Deploy to Google Cloud Run
-gcloud run deploy regops-shield --source . --region us-central1 --allow-unauthenticated
+```bash
+gcloud run deploy regops-shield --source . --allow-unauthenticated
 ```
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | Service info |
-| GET | `/health` | Health check with MongoDB status |
-| POST | `/api/v1/shadow-run` | Run shadow simulation on a claim |
-| GET | `/api/v1/sessions/{id}` | Retrieve audit session by ID |
-| GET | `/api/v1/audit/{id}` | Generate full audit packet |
-| POST | `/api/v1/vector-search` | Vector search policies |
-| GET | `/api/v1/sessions` | List recent sessions |
-
-### Example Request
-```bash
-curl -X POST http://localhost:8080/api/v1/shadow-run \
-  -H "Content-Type: application/json" \
-  -d '{
-    "claim_id": "CLM-001",
-    "claimant_id": "USR-12345",
-    "claim_type": "auto",
-    "claim_amount": 15000.00,
-
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Service info and version |
+| `/health` | GET | Health check with MongoDB status |
+| `/api/v1/shadow-run` | POST | Run shadow simulation (ClaimInput) |
+| `/api/v1/sessions/{id}` | GET | Retrieve audit session |
+| `/api/v1/audit/{id}` | GET | Generate full audit packet (SHA-256) |
+| `/api/v1/vector-search` | POST | Semantic policy search |
+| `/api/v1/sessions` | GET | List recent sessions |
 
 ## MCP Server (Model Context Protocol)
 
-RegOps Shield implements a lightweight MCP server (`agents/mcp_server.py`) that exposes MongoDB Atlas as a tool provider. This enables Gemini 2.0 Flash to autonomously call `search_policies` and `vector_search_policies` through the Model Context Protocol.
+Implements `agents/mcp_server.py` exposing MongoDB Atlas as a tool provider for Gemini:
 
-**Available MCP Tools:**
-- `search_policies` — Keyword search against MongoDB Atlas policy collection
-- `vector_search_policies` — Semantic search using Google text-embedding-004 (768 dims)
-- `health_check` — MongoDB connection health probe
-
-```bash
-# Test MCP server standalone
-python agents/mcp_server.py
-```
-
-## Architecture (Phase 4)
-
-```
-┌─────────────────┐
-│    Client       │
-│  (REST / CLI)   │
-└───────┬─────────┘
-        │ HTTP POST /api/v1/shadow-run
-        v
-┌─────────────────────────────────────────────────┐
-│         FastAPI Microservice (app.py)           │
-│  Google Cloud Run — Containerized               │
-└──┬──────────┬────────────────┬──────────────────┘
-   │          │                │
-   v          v                v
-┌──────────┐ ┌──────────────┐ ┌──────────────────┐
-│Supervisor│ │  MCPServer   │ │  Audit/Audit     │
-│  Agent   │ │  (tool wrap) │ │  Remediation     │
-│Gemini 2.0│ │  search_     │ │  Helper          │
-│ Flash    │ │  policies    │ │                  │
-└───┬──────┘ └─────┬────────┘ └──────────────────┘
-    │               │
-    │  native tool  │
-    │  call         │
-    v               v
-┌─────────────────────────────────────────────────┐
-│          MongoDB Atlas MCP                      │
-│ ┌──────────────┐  ┌────────────────────────────┐ │
-│ │   policies   │  │    shadow_sessions         │ │
-│ │ vector_index │──│    (audit trail replay)    │ │
-│ └──────────────┘  └────────────────────────────┘ │
-└─────────────────────────────────────────────────┘
-```
-
-## OpenAPI Documentation
-
-The API is documented via OpenAPI 3.0. When running locally:
-
-```bash
-# Swagger UI
-http://localhost:8080/docs
-
-# ReDoc
-http://localhost:8080/redoc
-```
-
-See `API_ENDPOINTS.md` for the complete endpoint specification with request/response schemas.
-
-## Key Technical Decisions
-
-| Decision | Rationale |
-|---|---|
-| **Native Tool Calling** | Gemini 2.0 Flash autonomously decides when to query MongoDB — no hardcoded prompt flows |
-| **Pydantic Structured Outputs** | `response_schema=ShadowRunSession` guarantees valid JSON — no prompt-hacking |
-| **Atlas Vector Search** | Semantic policy retrieval with Google text-embedding-004 — 768 dimensions |
-| **MCP Wrapper (Option B)** | Lightweight `MCPServer` class exposing tools via standard MCP protocol |
-| **System Instruction Separation** | Role defined in `system_instruction` parameter + `prompts/supervisor_system.yaml` |
-| **Two-Phase Analysis** | Phase 1: tool retrieval, Phase 2: structured evaluation with guardrails |
-| **Audit Trail** | `tool_calls_made` field records every tool call for compliance replay |
-    "incident_date": "2025-12-15",
-    "policy_number": "POL-XYZ789",
-    "description": "Vehicle collision at intersection"
-  }'
-```
-
-## Project Documentation
-- **`PATENTABILITY.md`**: Core novelty claims, Section 3(k) strategy, prior art analysis
-- **`STRATEGIC_ALIGNMENT.md`**: Hackathon track recommendation and execution plan
-- **`docs/FORM2_Provisional_Draft.md`**: Indian IPO provisional patent specification (Form 2)
-- **`docs/ADR.md`**: Architecture Decision Record (TOGAF-aligned)
-- **`demo/video_script.md`**: 3-minute demo recording guide
+| Tool | Description |
+|------|-------------|
+| `search_policies` | Keyword-based policy retrieval |
+| `vector_search_policies` | Semantic search using Atlas Vector Search |
+| `health_check` | Connection probe |
 
 ## Environment Variables
+
 | Variable | Description | Required |
-|---|---|---|
+|----------|-------------|----------|
 | `GEMINI_API_KEY` | Google AI Studio API key | Yes |
 | `GOOGLE_CLOUD_PROJECT_ID` | GCP project ID | Yes |
 | `MONGODB_URI` | MongoDB Atlas connection string | Yes |
-| `PORT` | Server port (default: 8080 for Cloud Run) | No |
-| `LOG_LEVEL` | Python logging level (default: INFO) | No |
+| `ATLAS_CLUSTER_NAME` | Atlas cluster name | Yes |
+| `ATLAS_DATABASE` | Database name (default: `regops_shield`) | Yes |
+| `GOOGLE_EMBEDDING_MODEL` | Embedding model (default: `text-embedding-004`) | Optional |
+| `VECTOR_INDEX_NAME` | Vector search index name (default: `policies_vector_index`) | Optional |
+| `PORT` | Server port (default: `8080`) | Optional |
+| `LOG_LEVEL` | Logging level (default: `INFO`) | Optional |
 
-See `.env.example` for full list.
+## Seed Sample Data
+
+Data is located in `data/` (claims.json, policies.json). Seed MongoDB via:
+
+```bash
+python -c "import json; from pymongo import MongoClient; \
+client = MongoClient('$MONGODB_URI'); \
+db = client['regops_shield']; \
+db.policies.insert_many(json.load(open('data/policies.json')))"
+```
+
+## Project Structure
+
+```
+regops-shield/
+├── agents/
+│   ├── __init__.py
+│   ├── audit.py          # Audit packet generator (SHA-256)
+│   ├── mcp_server.py     # MongoDB Atlas MCP tool provider
+│   ├── policy_extractor.py  # Policy extraction agent
+│   ├── remediation.py    # Remediation action engine
+│   └── supervisor.py     # Supervisor agent (Gemini 2.0 Flash)
+├── memory/
+│   └── mongo_utils.py    # MongoDB utilities + Vector Search
+├── prompts/
+│   └── supervisor_system.yaml  # Agent system instructions
+├── data/
+│   ├── claims.json       # Synthetic insurance claims
+│   └── policies.json     # Compliance policy rules
+├── demo/
+│   └── video_script.md   # 3-minute demo video script
+├── docs/
+│   ├── ADR.md            # Architecture Decision Records
+│   └── architecture_diagram.md
+├── .env.example          # Environment template
+├── app.py                # FastAPI microservice
+├── main.py               # CLI entry point
+├── requirements.txt      # Production dependencies
+├── Dockerfile            # Cloud Run container
+├── DEPLOY.md             # Deployment guide
+├── API_ENDPOINTS.md      # API documentation
+├── LICENSE               # Apache 2.0
+└── README.md             # This file
+```
+
+## Documentation
+
+- **[API Endpoints](API_ENDPOINTS.md)** — Full API documentation with request/response examples
+- **[Deployment Guide](DEPLOY.md)** — Cloud Run deployment and troubleshooting
+- **[Architecture Decisions](docs/ADR.md)** — Key technical decisions and rationale
+- **[Architecture Diagram](docs/architecture_diagram.md)** — System architecture overview
+
+## Compliance Checklist
+
+| Requirement | Status |
+|-------------|--------|
+| Gemini 2.0 Flash with native tool calling | ✅ |
+| MongoDB Atlas Vector Search + text-embedding-004 | ✅ |
+| Google Cloud Run deployment ready | ✅ |
+| Multi-agent architecture with HITL governance | ✅ |
+| Immutable audit trail with SHA-256 integrity | ✅ |
+| Production FastAPI microservice | ✅ |
+| Pydantic-validated structured outputs | ✅ |
+| Apache 2.0 open-source license | ✅ |
 
 ## License
-Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
-## Team
-- **nsavarn** — Principal Engineer & Patent Architect
-
-- ### Seed Sample Data
-Sample data for testing is provided in the `data/` directory:
-- `data/claims.json` — 3 synthetic insurance claims (CLM-2026-001 to CLM-2026-003)
-- `data/policies.json` — 4 compliance policy rules with severity levels (HIGH/MEDIUM)
-
-To seed data into MongoDB Atlas:
-```bash
-# Using Python
-python -c "import json; from pymongo import MongoClient; \
-  client = MongoClient('$MONGODB_URI'); \
-  db = client['regops_shield']; \
-  db.policies.insert_many(json.load(open('data/policies.json')))"
-```
-
-### Phase 4 Architecture (Native Tools + Vector Search)
-The current release (v1.0) implements full Phase 4 capabilities:
-* **Gemini 2.0 Flash** with native tool calling (no prompt-hacked JSON)
-* **Pydantic** structured outputs for deterministic responses
-* **MongoDB Atlas Vector Search** using `text-embedding-004` for policy retrieval
-* **Shadow-run sessions** persisted in MongoDB with replayable audit memory
-* **FastAPI** microservice deployed on Google Cloud Run
-
-#### End-to-End Flow
-```text
-[Claim Input] → [POST /api/v1/shadow-run]
-              → [Supervisor Agent (Gemini 2.0 Flash)]
-              → [search_policies tool → Atlas Vector Search]
-              → [Risk Assessment + Remediation]
-              → [AuditPacketGenerator → MongoDB]
-              → [SessionResponse (Pydantic) → HTTP 200]
-```
-
-### Deploy to Google Cloud Run
-```bash
-# 1. Enable required APIs
-gcloud services enable cloudbuild.googleapis.com run.googleapis.com
-
-# 2. Authenticate
-gcloud auth login
-gcloud config set project $GOOGLE_CLOUD_PROJECT_ID
-
-# 3. Deploy directly from source (Cloud Build handles Dockerfile)
-gcloud run deploy regops-shield \\
-  --source . \\
-  --region us-central1 \\
-  --allow-unauthenticated \\
-  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY,\\
-     GOOGLE_CLOUD_PROJECT_ID=$GOOGLE_CLOUD_PROJECT_ID,\\
-     MONGODB_URI=$MONGODB_URI,\\
-     ATLAS_CLUSTER_NAME=$ATLAS_CLUSTER_NAME,\\
-     ATLAS_DATABASE=$ATLAS_DATABASE
-
-# 4. Get your live URL
-gcloud run services describe regops-shield --region us-central1
-```
-
-### Hackathon Submission
-* **Devpost**: [link to Devpost submission]
-* **Live Demo**: `https://regops-shield-<hash>-uc.a.run.app`
-* **GitHub**: https://github.com/nsavarn/regops-shield
-* **Demo Video**: `docs/demo/video_script.md` (3-minute walkthrough)
-* **Patent Docs**: `docs/FORM2_Provisional_Draft.md`
-
----
-
----
-*Built for Google Cloud Rapid Agent Hackathon 2026 (MongoDB Track)*
+[Apache 2.0](LICENSE) — Built for the Google Cloud Rapid Agent Hackathon 2026.
