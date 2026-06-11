@@ -153,3 +153,12 @@ class HealthResponse(BaseModel):
     status: str = "ok"
     version: str
     environment: str
+
+
+
+class ReadinessResponse(BaseModel):
+    """Readiness probe response."""
+
+    status: str = "ready"
+    uptime_seconds: float = 0.0
+    checks: dict[str, str] = Field(default_factory=dict)
